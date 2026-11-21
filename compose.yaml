@@ -1,0 +1,39 @@
+services:
+  postgres:
+    image: postgres:17.12
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-ougsi}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+      ORCHESTRATOR_DB_USER: ${ORCHESTRATOR_DB_USER:-orchestrator}
+      ORCHESTRATOR_DB_PASSWORD: ${ORCHESTRATOR_DB_PASSWORD:?Set ORCHESTRATOR_DB_PASSWORD}
+      VM_DB_USER: ${VM_DB_USER:-vm_service}
+      VM_DB_PASSWORD: ${VM_DB_PASSWORD:?Set VM_DB_PASSWORD}
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/10-prototype.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U postgres -d \"$$POSTGRES_DB\""]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+  rabbitmq:
+    image: rabbitmq:4.3.6
+    hostname: rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: prototype
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD}
+    ports:
+      - "127.0.0.1:${RABBITMQ_PORT:-5672}:5672"
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "check_port_connectivity"]
+      interval: 5s
+      timeout: 10s
+      retries: 20
+
+volumes:
+  postgres-data:
+  rabbitmq-data:

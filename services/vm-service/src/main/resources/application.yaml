@@ -1,0 +1,17 @@
+server:
+  address: 127.0.0.1
+  port: 8081
+
+spring:
+  application:
+    name: vm-service
+  datasource:
+    url: jdbc:postgresql://${POSTGRES_HOST:127.0.0.1}:${POSTGRES_PORT:5432}/${POSTGRES_DB:ougsi}?currentSchema=vm_service
+    username: ${VM_DB_USER:vm_service}
+    password: ${VM_DB_PASSWORD}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
