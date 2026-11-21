@@ -1,0 +1,123 @@
+openapi: 3.1.0
+info:
+  title: API службы управления виртуальными машинами
+  version: 0.1.0
+  description: Локальная проверка работоспособности и проект контракта исходящего канала агента.
+paths:
+  /actuator/health:
+    get:
+      operationId: checkVmServiceHealth
+      summary: Проверить работоспособность службы
+      servers:
+        - url: http://127.0.0.1:8081
+      responses:
+        '200':
+          description: Служба работоспособна.
+          content:
+            application/vnd.spring-boot.actuator.v3+json:
+              schema:
+                $ref: './schemas.yaml#/$defs/Health'
+            application/json:
+              schema:
+                $ref: './schemas.yaml#/$defs/Health'
+        '503':
+          description: Служба не готова к работе.
+          content:
+            application/vnd.spring-boot.actuator.v3+json:
+              schema:
+                $ref: './schemas.yaml#/$defs/Health'
+            application/json:
+              schema:
+                $ref: './schemas.yaml#/$defs/Health'
+  /internal/v1/nodes/{nodeId}/commands/poll:
+    post:
+      operationId: pollCommand
+      summary: Получить команду для узла
+      x-implementation-stage: Э4
+      servers:
+        - url: https://{managementHost}:8443
+          variables:
+            managementHost: {default: management.example}
+      security:
+        - NodeCertificate: []
+      parameters:
+        - $ref: '#/components/parameters/NodeId'
+      responses:
+        '200':
+          description: Команда зарезервирована за агентом на ограниченное время.
+          content:
+            application/json:
+              schema:
+                $ref: './schemas.yaml#/$defs/VmCreateCommand'
+        '204':
+          description: Узлу пока не назначены доступные команды.
+        '400':
+          $ref: '#/components/responses/InvalidMessage'
+        '403':
+          $ref: '#/components/responses/WrongNode'
+  /internal/v1/nodes/{nodeId}/commands/{stepId}/result:
+    post:
+      operationId: recordCommandResult
+      summary: Передать результат выполнения команды узла
+      x-implementation-stage: Э4
+      servers:
+        - url: https://{managementHost}:8443
+          variables:
+            managementHost: {default: management.example}
+      security:
+        - NodeCertificate: []
+      parameters:
+        - $ref: '#/components/parameters/NodeId'
+        - name: stepId
+          in: path
+          required: true
+          schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: './schemas.yaml#/$defs/ExecutionResult'
+      responses:
+        '204':
+          description: Результат сохранён или ранее принят в том же виде.
+        '400':
+          $ref: '#/components/responses/InvalidMessage'
+        '403':
+          $ref: '#/components/responses/WrongNode'
+        '404':
+          description: Команда с таким идентификатором узлу не назначена.
+          content:
+            application/json:
+              schema:
+                $ref: './schemas.yaml#/$defs/Error'
+        '409':
+          description: Идентификаторы расходятся с командой или получен другой итоговый результат для шага.
+          content:
+            application/json:
+              schema:
+                $ref: './schemas.yaml#/$defs/Error'
+components:
+  parameters:
+    NodeId:
+      name: nodeId
+      in: path
+      required: true
+      schema: {type: string, format: uuid}
+  responses:
+    InvalidMessage:
+      description: Некорректный идентификатор или тело запроса.
+      content:
+        application/json:
+          schema:
+            $ref: './schemas.yaml#/$defs/Error'
+    WrongNode:
+      description: Сертификат клиента не связан с указанным узлом.
+      content:
+        application/json:
+          schema:
+            $ref: './schemas.yaml#/$defs/Error'
+  securitySchemes:
+    NodeCertificate:
+      type: mutualTLS
+      description: Агент проверяет сертификат и имя сервера, служба проверяет сертификат агента и его привязку к узлу.

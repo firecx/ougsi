@@ -1,0 +1,113 @@
+openapi: 3.1.0
+info:
+  title: API службы оркестрации
+  version: 0.1.0
+  description: Локальный API макета KVM. Заявки поступают непосредственно в службу оркестрации.
+servers:
+  - url: http://127.0.0.1:8080
+paths:
+  /api/v1/requests:
+    post:
+      operationId: createRequest
+      summary: Подать заявку на создание ВМ на выбранном узле
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: './schemas.yaml#/$defs/VmCreate'
+      responses:
+        '202':
+          description: Заявка и шаг сохранены для последующего исполнения.
+          headers:
+            Location:
+              schema: {type: string, format: uri-reference}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RequestStatus'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+  /api/v1/requests/{requestId}:
+    get:
+      operationId: getRequest
+      summary: Получить состояние заявки по идентификатору
+      parameters:
+        - name: requestId
+          in: path
+          required: true
+          schema: {type: string, format: uuid}
+      responses:
+        '200':
+          description: Состояние заявки и единственного шага. Результат и ошибка предусмотрены для Э5.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RequestStatus'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '404':
+          description: Заявка не найдена.
+          content:
+            application/json:
+              schema:
+                $ref: './schemas.yaml#/$defs/Error'
+  /actuator/health:
+    get:
+      operationId: checkOrchestratorHealth
+      summary: Проверить работоспособность службы
+      responses:
+        '200':
+          description: Служба работоспособна.
+          content:
+            application/vnd.spring-boot.actuator.v3+json:
+              schema:
+                $ref: './schemas.yaml#/$defs/Health'
+            application/json:
+              schema:
+                $ref: './schemas.yaml#/$defs/Health'
+        '503':
+          description: Служба не готова к работе.
+          content:
+            application/vnd.spring-boot.actuator.v3+json:
+              schema:
+                $ref: './schemas.yaml#/$defs/Health'
+            application/json:
+              schema:
+                $ref: './schemas.yaml#/$defs/Health'
+components:
+  responses:
+    InvalidRequest:
+      description: Некорректный идентификатор или параметры заявки.
+      content:
+        application/json:
+          schema:
+            $ref: './schemas.yaml#/$defs/Error'
+  schemas:
+    RequestStatus:
+      type: object
+      additionalProperties: false
+      required: [requestId, stepId, status]
+      properties:
+        requestId: {type: string, format: uuid}
+        stepId: {type: string, format: uuid}
+        status: {enum: [QUEUED, SUCCEEDED, FAILED]}
+        result: {$ref: './schemas.yaml#/$defs/VmCreated'}
+        error: {$ref: './schemas.yaml#/$defs/Error'}
+      oneOf:
+        - properties:
+            status: {const: QUEUED}
+          not:
+            anyOf:
+              - required: [result]
+              - required: [error]
+        - required: [result]
+          properties:
+            status: {const: SUCCEEDED}
+          not:
+            required: [error]
+        - required: [error]
+          properties:
+            status: {const: FAILED}
+          not:
+            required: [result]

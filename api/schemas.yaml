@@ -1,0 +1,100 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$defs:
+  VmCreate:
+    type: object
+    additionalProperties: false
+    required: [nodeId, imageId, name, vcpus, memoryMiB, diskGiB, network]
+    properties:
+      nodeId:
+        type: string
+        format: uuid
+        description: Идентификатор явно выбранного узла KVM x86-64.
+      imageId:
+        type: string
+        format: uuid
+        description: Идентификатор подготовленного образа QCOW2 на выбранном узле.
+      name:
+        $ref: '#/$defs/Name'
+      vcpus:
+        type: integer
+        minimum: 1
+        maximum: 32
+        description: Число виртуальных ЦП. Записывается целым числом без дробной части и экспоненты.
+      memoryMiB:
+        type: integer
+        minimum: 256
+        maximum: 131072
+        description: Память в МиБ. Записывается целым числом без дробной части и экспоненты.
+      diskGiB:
+        type: integer
+        minimum: 1
+        maximum: 2048
+        description: Полный виртуальный размер системного диска в ГиБ. Записывается целым числом без дробной части и экспоненты.
+      network:
+        $ref: '#/$defs/Name'
+        description: Имя предварительно настроенной виртуальной сети libvirt.
+  Name:
+    type: string
+    pattern: '^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$'
+    minLength: 1
+    maxLength: 63
+  Error:
+    type: object
+    additionalProperties: false
+    required: [code, object, step, detail]
+    properties:
+      code: {type: string, minLength: 1}
+      object: {type: string, minLength: 1}
+      step: {const: VM_CREATE}
+      detail: {type: string, minLength: 1}
+  VmCreated:
+    type: object
+    additionalProperties: false
+    required: [vmId]
+    properties:
+      vmId: {type: string, format: uuid}
+  ExecutionResult:
+    type: object
+    oneOf:
+      - required: [result]
+        properties:
+          status: {const: SUCCEEDED}
+        not:
+          required: [error]
+      - required: [error]
+        properties:
+          status: {const: FAILED}
+        not:
+          required: [result]
+    additionalProperties: false
+    required: [schemaVersion, requestId, stepId, nodeId, operation, status]
+    properties:
+      schemaVersion: {const: 1}
+      requestId: {type: string, format: uuid}
+      stepId: {type: string, format: uuid}
+      nodeId: {type: string, format: uuid}
+      operation: {const: vm.create}
+      status: {type: string}
+      result: {$ref: '#/$defs/VmCreated'}
+      error: {$ref: '#/$defs/Error'}
+  VmCreateCommand:
+    type: object
+    additionalProperties: false
+    required: [schemaVersion, requestId, stepId, operation, nodeId, imageId, name, vcpus, memoryMiB, diskGiB, network]
+    properties:
+      schemaVersion: {const: 1}
+      requestId: {type: string, format: uuid}
+      stepId: {type: string, format: uuid}
+      operation: {const: vm.create}
+      nodeId: {$ref: '#/$defs/VmCreate/properties/nodeId'}
+      imageId: {$ref: '#/$defs/VmCreate/properties/imageId'}
+      name: {$ref: '#/$defs/Name'}
+      vcpus: {$ref: '#/$defs/VmCreate/properties/vcpus'}
+      memoryMiB: {$ref: '#/$defs/VmCreate/properties/memoryMiB'}
+      diskGiB: {$ref: '#/$defs/VmCreate/properties/diskGiB'}
+      network: {$ref: '#/$defs/VmCreate/properties/network'}
+  Health:
+    type: object
+    required: [status]
+    properties:
+      status: {type: string}
