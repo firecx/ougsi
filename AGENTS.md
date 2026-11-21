@@ -23,3 +23,5 @@ The first implementation should add automated builds and unit tests for every ch
 ## Commits and Pull Requests
 
 Recent commits use short plain-text subjects such as `TS update`. Keep subjects brief and name the specific change. In pull requests, summarize what changed, reference the relevant plan task or specification section, and report the checks performed. Link an issue when one exists.
+
+In each commit, add an entry to `doc/Журнал разработки.md` with the commit subject, relevant plan task, outcome, and checks. Record blockers that affect dependent tasks.
