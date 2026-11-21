@@ -56,20 +56,20 @@ ctest --test-dir .build/node-agent --output-on-failure
 
 Для сборки и тестов нужен .NET SDK 10. Для создания ВМ нужны Windows 11 Pro или Enterprise x64, включённый Hyper-V с модулем управления для Windows PowerShell 5.1 и аппаратная виртуализация. Запускайте `check` и `create` из PowerShell от имени администратора или под учётной записью с правами управления Hyper-V. [Установка Hyper-V](https://learn.microsoft.com/en-us/windows-server/virtualization/hyper-v/get-started/install-hyper-v)
 
-Из корня репозитория соберите модуль и запустите тесты конфигурации и вызовов командлетов. Консольный проект .NET и сценарий Windows PowerShell выполняют тесты без запущенного Hyper-V. Для C# используйте `dotnet format whitespace windows-hyperv --folder`. В C# и PowerShell используйте отступ в четыре пробела.
+Из корня репозитория соберите модуль и запустите тесты конфигурации и вызовов командлетов. Консольный проект .NET и сценарий Windows PowerShell выполняют тесты без запущенного Hyper-V. Для C# используйте `dotnet format whitespace windows/hyperv --folder`. В C# и PowerShell используйте отступ в четыре пробела.
 
 ```powershell
-dotnet build windows-hyperv/src -c Release
-dotnet run --project windows-hyperv/tests -c Release
-powershell.exe -NoProfile -NonInteractive -ExecutionPolicy RemoteSigned -File windows-hyperv/tests/HyperV.Tests.ps1
+dotnet build windows/hyperv/src -c Release
+dotnet run --project windows/hyperv/tests -c Release
+powershell.exe -NoProfile -NonInteractive -ExecutionPolicy RemoteSigned -File windows/hyperv/tests/HyperV.Tests.ps1
 ```
 
-Проверьте доступ к Hyper-V и список виртуальных коммутаторов, затем скопируйте [пример конфигурации](windows-hyperv/vm.example.json).
+Проверьте доступ к Hyper-V и список виртуальных коммутаторов, затем скопируйте [пример конфигурации](windows/hyperv/vm.example.json).
 
 ```powershell
-dotnet run --project windows-hyperv/src -c Release -- check
+dotnet run --project windows/hyperv/src -c Release -- check
 New-Item -ItemType Directory -Path .build -Force | Out-Null
-Copy-Item windows-hyperv/vm.example.json .build/hyperv-vm.json
+Copy-Item windows/hyperv/vm.example.json .build/hyperv-vm.json
 ```
 
 В `.build/hyperv-vm.json` задайте имя ВМ и абсолютные пути на локальных дисках. `storageRoot` указывает на существующий каталог. Выберите один источник загрузки.
@@ -82,7 +82,7 @@ Copy-Item windows-hyperv/vm.example.json .build/hyperv-vm.json
 Создайте ВМ и проверьте её параметры по идентификатору из результата.
 
 ```powershell
-$vm = dotnet run --project windows-hyperv/src -c Release --no-build -- create .build/hyperv-vm.json | ConvertFrom-Json
+$vm = dotnet run --project windows/hyperv/src -c Release --no-build -- create .build/hyperv-vm.json | ConvertFrom-Json
 if ($LASTEXITCODE -ne 0) { throw 'Не удалось создать ВМ.' }
 Get-VM -Id $vm.id
 vmconnect.exe localhost $vm.name

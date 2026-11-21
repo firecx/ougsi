@@ -75,7 +75,7 @@ jobs:
       - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: '10.0.x'
-      - run: dotnet build windows-hyperv/src -c Release
-      - run: dotnet run --project windows-hyperv/tests -c Release
+      - run: dotnet build windows/hyperv/src -c Release
+      - run: dotnet run --project windows/hyperv/tests -c Release
       - name: Test the Hyper-V cmdlet integration with mocks
-        run: powershell.exe -NoProfile -NonInteractive -ExecutionPolicy RemoteSigned -File windows-hyperv/tests/HyperV.Tests.ps1
+        run: powershell.exe -NoProfile -NonInteractive -ExecutionPolicy RemoteSigned -File windows/hyperv/tests/HyperV.Tests.ps1
