@@ -1,6 +1,6 @@
 # Система оркестрации
 
-Первый макет проверяет создание виртуальной машины на KVM по заявке через службу оркестрации, службу управления ВМ и агент узла. Текущая сборка принимает заявку и сохраняет её для последующего исполнения. Вызовы агента и запуск гостя предусмотрены в Э4, обмен через очередь и проверка конечного результата — в Э5.
+Первый макет проверяет создание виртуальной машины на KVM по заявке через службу оркестрации, службу управления ВМ и агент узла. Текущая сборка принимает заявку и сохраняет её для последующего исполнения. Вызовы агента и запуск гостя предусмотрены в Э4, обмен через очередь и проверка конечного результата — в Э5. Для подготовки ВМ стенда на Windows 11 используйте [локальный модуль Hyper-V](#развёртывание-вм-стенда-на-hyper-v).
 
 - [План разработки v2](doc/Техническое%20задание/План%20разработки%20v2.md)
 - [Журнал разработки](doc/Журнал%20разработки.md)
@@ -49,6 +49,48 @@ cmake --build .build/node-agent --parallel
 ctest --test-dir .build/node-agent --output-on-failure
 .\.build\node-agent\node-agent.exe --check-config 14c48a31-e5a4-491b-8f96-6a82876afa95 https://localhost:8443
 ```
+
+## Развёртывание ВМ стенда на Hyper-V
+
+Модуль Э0 создаёт ВМ второго поколения на локальном Hyper-V из установочного ISO или готового VHDX. Он запускается из командной строки и готовит гостевые ОС для разработки системы оркестрации.
+
+Для сборки и тестов нужен .NET SDK 10. Для создания ВМ нужны Windows 11 Pro или Enterprise x64, включённый Hyper-V с модулем управления для Windows PowerShell 5.1 и аппаратная виртуализация. Запускайте `check` и `create` из PowerShell от имени администратора или под учётной записью с правами управления Hyper-V. [Установка Hyper-V](https://learn.microsoft.com/en-us/windows-server/virtualization/hyper-v/get-started/install-hyper-v)
+
+Из корня репозитория соберите модуль и запустите тесты конфигурации и вызовов командлетов. Консольный проект .NET и сценарий Windows PowerShell выполняют тесты без запущенного Hyper-V. Для C# используйте `dotnet format whitespace windows-hyperv --folder`. В C# и PowerShell используйте отступ в четыре пробела.
+
+```powershell
+dotnet build windows-hyperv/src -c Release
+dotnet run --project windows-hyperv/tests -c Release
+powershell.exe -NoProfile -NonInteractive -ExecutionPolicy RemoteSigned -File windows-hyperv/tests/HyperV.Tests.ps1
+```
+
+Проверьте доступ к Hyper-V и список виртуальных коммутаторов, затем скопируйте [пример конфигурации](windows-hyperv/vm.example.json).
+
+```powershell
+dotnet run --project windows-hyperv/src -c Release -- check
+New-Item -ItemType Directory -Path .build -Force | Out-Null
+Copy-Item windows-hyperv/vm.example.json .build/hyperv-vm.json
+```
+
+В `.build/hyperv-vm.json` задайте имя ВМ и абсолютные пути на локальных дисках. `storageRoot` указывает на существующий каталог. Выберите один источник загрузки.
+
+- `isoPath` указывает на установочный ISO с поддержкой UEFI. Модуль создаст динамический диск и запустит установщик с ISO. Установку гостевой ОС выполните в консоли ВМ.
+- `sourceVhdxPath` указывает на самостоятельный VHDX с установленной гостевой ОС и загрузчиком UEFI. Модуль создаст отдельную копию диска для ВМ.
+
+По умолчанию ВМ получает 2 vCPU, 4096 МиБ памяти и при установке с ISO диск 32 ГиБ. Эти параметры задаются полями `vcpus`, `memoryMiB` и `diskGiB`. Для подключения к сети укажите существующий `switchName`, например `Default Switch`, если он есть в результате `check`. Если поле пропущено, ВМ создаётся без подключения к коммутатору. `start: false` оставляет ВМ выключенной. Для Secure Boot укажите `secureBootTemplate` со значением `MicrosoftWindows` или `MicrosoftUEFICertificateAuthority`. При отсутствии поля Secure Boot выключен. [Настройки загрузки ВМ второго поколения](https://learn.microsoft.com/en-us/windows-server/virtualization/hyper-v/plan/should-i-create-a-generation-1-or-2-virtual-machine-in-hyper-v)
+
+Создайте ВМ и проверьте её параметры по идентификатору из результата.
+
+```powershell
+$vm = dotnet run --project windows-hyperv/src -c Release --no-build -- create .build/hyperv-vm.json | ConvertFrom-Json
+if ($LASTEXITCODE -ne 0) { throw 'Не удалось создать ВМ.' }
+Get-VM -Id $vm.id
+vmconnect.exe localhost $vm.name
+```
+
+Команда `create` возвращает JSON с идентификатором, именем и состоянием ВМ, путями к каталогу ВМ и диску и именем коммутатора. При занятом имени или каталоге модуль завершится с ошибкой. После установки с ISO извлеките его из виртуального DVD-привода, чтобы ВМ загружалась с системного диска.
+
+Для узла KVM задайте `nestedVirtualization: true`. После загрузки Linux установите QEMU и libvirt и выполните [проверки Э1](doc/Эскизный%20проект/Стенд%20Э1.md#проверка-узла-kvm). Для готовности стенда проверьте запуск вложенной ВМ с ускорением KVM. [Требования к вложенной виртуализации](https://learn.microsoft.com/en-us/windows-server/virtualization/hyper-v/enable-nested-virtualization)
 
 ## Запуск контура разработки
 

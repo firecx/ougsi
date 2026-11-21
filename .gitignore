@@ -2,3 +2,5 @@
 /.build/
 /build/
 **/target/
+/windows-hyperv/**/bin/
+/windows-hyperv/**/obj/

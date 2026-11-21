@@ -1,0 +1,12 @@
+{
+  "name": "linux-dev",
+  "storageRoot": "C:\\HyperV\\Dev",
+  "isoPath": "C:\\Images\\debian-amd64.iso",
+  "vcpus": 4,
+  "memoryMiB": 4096,
+  "diskGiB": 40,
+  "switchName": "Default Switch",
+  "nestedVirtualization": true,
+  "secureBootTemplate": "MicrosoftUEFICertificateAuthority",
+  "start": true
+}

@@ -67,3 +67,15 @@ jobs:
       - run: cmake -S node-agent -B .build/node-agent -DCMAKE_BUILD_TYPE=Release
       - run: cmake --build .build/node-agent --parallel
       - run: ctest --test-dir .build/node-agent --output-on-failure
+
+  windows-hyperv:
+    runs-on: windows-2025
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
+      - run: dotnet build windows-hyperv/src -c Release
+      - run: dotnet run --project windows-hyperv/tests -c Release
+      - name: Test the Hyper-V cmdlet integration with mocks
+        run: powershell.exe -NoProfile -NonInteractive -ExecutionPolicy RemoteSigned -File windows-hyperv/tests/HyperV.Tests.ps1
